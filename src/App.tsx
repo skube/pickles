@@ -113,12 +113,12 @@ export default function App() {
   return (
     <div className="max-w-6xl mx-auto p-4 grid grid-cols-[1fr_2fr] gap-10 relative ">
       {notification && (
-        <div className="absolute top-10 left-1/2 transform -translate-x-1/2 bg-green-500 text-white opacity-90 text-xl px-4 py-2 rounded shadow-md transition-opacity duration-1000 animate-fadeOut">
+        <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 p-10 bg-green-500 text-white  text-2xl rounded shadow-lg transition-opacity duration-1000 animate-fadeOut border-4 border-green-700">
           {notification}
         </div>
       )}
-      <div>
-        <h1 className="text-2xl font-bold mb-4">pickles</h1>
+      <div className="bg-green-50/50 p-10 rounded-lg">
+        <h1 className="text-2xl font-bold mb-4">🥒 pickles</h1>
         <p className="text-sm text-gray-500 mb-4">
           The perfect picker for parsing perplexing JSON properties.
         </p>
@@ -155,7 +155,7 @@ export default function App() {
                   {typeof item.value === "string" &&
                     HEX_REGEX.test(item.value) && (
                       <span
-                        className="w-4 h-4 rounded-full border"
+                        className="w-4 h-4 rounded-full inline-block mr-4"
                         style={{ backgroundColor: item.value }}
                       ></span>
                     )}
