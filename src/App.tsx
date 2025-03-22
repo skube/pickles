@@ -95,9 +95,25 @@ export default function App() {
       setActiveSuggestion((prev) =>
         prev < suggestions.length - 1 ? prev + 1 : prev
       );
+      setTimeout(() => {
+        document
+          .querySelector(`li[data-index="${activeSuggestion + 1}"]`)
+          ?.scrollIntoView({
+            block: "nearest",
+            behavior: "smooth",
+          });
+      }, 0);
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       setActiveSuggestion((prev) => (prev > 0 ? prev - 1 : -1));
+      setTimeout(() => {
+        document
+          .querySelector(`li[data-index="${activeSuggestion - 1}"]`)
+          ?.scrollIntoView({
+            block: "nearest",
+            behavior: "smooth",
+          });
+      }, 0);
     } else if (e.key === "Enter" && activeSuggestion >= 0) {
       selectSuggestion(suggestions[activeSuggestion]);
     } else if (e.key === "ArrowRight" && prediction) {
@@ -117,7 +133,7 @@ export default function App() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto p-4 grid grid-cols-[1fr_2fr] gap-10 relative ">
+    <div className="mx-auto p-4 grid grid-cols-[30rem_3fr] gap-10 relative ">
       {notification && (
         <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 p-10 bg-green-500 text-white  text-2xl rounded shadow-lg transition-opacity duration-1000 animate-fadeOut border-4 border-green-700">
           {notification}
@@ -152,6 +168,7 @@ export default function App() {
               {suggestions.map((item, index) => (
                 <li
                   key={item.path}
+                  data-index={index}
                   className={`p-2 cursor-pointer flex justify-between ${
                     activeSuggestion === index ? "bg-blue-100" : ""
                   }`}
