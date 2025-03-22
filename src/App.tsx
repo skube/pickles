@@ -66,22 +66,28 @@ export default function App() {
       setPrediction("");
       return;
     }
-    const fuseResults = fuseRef.current.search(query);
-    const matches = fuseResults.map((r) => r.item);
-    setResults(matches);
 
     const sugg = jsonData.filter((item) =>
       item.path.toLowerCase().includes(query.toLowerCase())
     );
     sugg.sort((a, b) => a.path.length - b.path.length);
     setSuggestions(sugg);
+
+    // If there's an active suggestion, only show that result
+    if (activeSuggestion >= 0 && sugg[activeSuggestion]) {
+      setResults([sugg[activeSuggestion]]);
+    } else {
+      const fuseResults = fuseRef.current.search(query);
+      const matches = fuseResults.map((r) => r.item);
+      setResults(matches);
+    }
+
     if (sugg.length > 0) {
       setPrediction(sugg[0].path.substring(query.length));
     } else {
       setPrediction("");
     }
-    setActiveSuggestion(-1);
-  }, [query, jsonData]);
+  }, [query, jsonData, activeSuggestion]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "ArrowDown") {
