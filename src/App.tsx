@@ -67,6 +67,7 @@ export default function App() {
       return;
     }
 
+    // Keep path-based suggestions flexible
     const sugg = jsonData.filter((item) =>
       item.path.toLowerCase().includes(query.toLowerCase())
     );
@@ -77,9 +78,20 @@ export default function App() {
     if (activeSuggestion >= 0 && sugg[activeSuggestion]) {
       setResults([sugg[activeSuggestion]]);
     } else {
-      const fuseResults = fuseRef.current.search(query);
-      const matches = fuseResults.map((r) => r.item);
-      setResults(matches);
+      // First check for exact value matches
+      const exactValueMatches = jsonData.filter(
+        (item) => String(item.value).toLowerCase() === query.toLowerCase()
+      );
+
+      if (exactValueMatches.length > 0) {
+        // If we have exact value matches, only show those
+        setResults(exactValueMatches);
+      } else {
+        // Fall back to fuzzy search using Fuse.js for path searching
+        const fuseResults = fuseRef.current.search(query);
+        const matches = fuseResults.map((r) => r.item);
+        setResults(matches);
+      }
     }
 
     if (sugg.length > 0) {
