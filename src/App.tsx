@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { Analytics } from "@vercel/analytics/react";
 import Fuse from "fuse.js";
 
 interface JsonItem {
@@ -188,6 +189,7 @@ export default function App() {
           </div>
         ))}
       </div>
+      <Analytics />
     </div>
   );
 }
