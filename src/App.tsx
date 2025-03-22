@@ -174,14 +174,22 @@ export default function App() {
                   }`}
                   onMouseDown={() => selectSuggestion(item)}
                 >
-                  <span>{item.path}</span>
-                  {typeof item.value === "string" &&
-                    HEX_REGEX.test(item.value) && (
-                      <span
-                        className="w-4 h-4 rounded-full inline-block mr-4"
-                        style={{ backgroundColor: item.value }}
-                      ></span>
-                    )}
+                  <div className="flex justify-end">
+                    {typeof item.value === "string" &&
+                      HEX_REGEX.test(item.value) && (
+                        <span
+                          className="w-4 h-4 rounded-full inline-block mr-4"
+                          style={{ backgroundColor: item.value }}
+                        ></span>
+                      )}
+                    {typeof item.value === "string" &&
+                      item.value.length < 10 && (
+                        <span className="w-4 h-4 rounded-full inline-block">
+                          {item.value}
+                        </span>
+                      )}
+                  </div>
+                  <span className="text-sm inline-block mr-2">{item.path}</span>
                 </li>
               ))}
             </ul>
@@ -189,12 +197,12 @@ export default function App() {
         </div>
       </div>
 
-      <div>
+      <div className="text-lg">
         <h2 className="text-xl font-bold mb-4">Results</h2>
         {results.map((item) => (
           <div key={item.path} className="border-b py-2">
             <div>
-              <strong>{item.path}</strong>:
+              <strong>{item.path}</strong>:{` `}
               {typeof item.value === "object" ? (
                 <pre className="whitespace-pre-wrap bg-gray-100 p-2 rounded">
                   {JSON.stringify(item.value, null, 2)}
@@ -205,7 +213,7 @@ export default function App() {
             </div>
             {typeof item.value === "string" && HEX_REGEX.test(item.value) && (
               <div
-                className="w-6 h-6 rounded-full border"
+                className="w-10 h-10 border"
                 style={{ backgroundColor: item.value }}
               ></div>
             )}
