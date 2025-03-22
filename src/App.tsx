@@ -1,6 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 import Fuse from "fuse.js";
 
+interface JsonItem {
+  path: string;
+  value: any;
+}
+
 const flattenJSON = (data: any, parent = "") => {
   let result: { path: string; value: any }[] = [];
   if (typeof data === "object" && data !== null) {
@@ -16,26 +21,29 @@ const flattenJSON = (data: any, parent = "") => {
 const HEX_REGEX = /^#(?:[A-Fa-f0-9]{3}){1,2}$/;
 
 export default function App() {
-  const [jsonData, setJsonData] = useState([]);
+  const [jsonData, setJsonData] = useState<JsonItem[]>([]);
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState([]);
-  const [suggestions, setSuggestions] = useState([]);
+  const [results, setResults] = useState<JsonItem[]>([]);
+  const [suggestions, setSuggestions] = useState<JsonItem[]>([]);
   const [activeSuggestion, setActiveSuggestion] = useState(-1);
   const [prediction, setPrediction] = useState("");
   const [notification, setNotification] = useState("");
-  const fuseRef = useRef(null);
+  const fuseRef = useRef<Fuse<JsonItem> | null>(null);
 
-  const handleFileUpload = (e) => {
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     setError("");
+    if (!e.target.files) return;
     const file = e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
-        const parsed = JSON.parse(event.target.result);
+        if (!event.target) return;
+        const result = event.target.result;
+        if (typeof result !== "string") return;
+        const parsed = JSON.parse(result);
         const flattened = flattenJSON(parsed);
-        console.log(flattened);
         setJsonData(flattened);
         fuseRef.current = new Fuse(flattened, {
           keys: ["path", "value"],
@@ -74,7 +82,7 @@ export default function App() {
     setActiveSuggestion(-1);
   }, [query, jsonData]);
 
-  const handleKeyDown = (e) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "ArrowDown") {
       e.preventDefault();
       setActiveSuggestion((prev) =>
@@ -94,7 +102,7 @@ export default function App() {
     }
   };
 
-  const selectSuggestion = (suggestion) => {
+  const selectSuggestion = (suggestion: JsonItem) => {
     setQuery(suggestion.path);
     navigator.clipboard.writeText(String(suggestion.path));
     setNotification(`Picked! ${suggestion.path}`);
