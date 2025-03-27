@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Analytics } from "@vercel/analytics/react";
+
 import Fuse from "fuse.js";
 
 interface JsonItem {
@@ -22,7 +23,18 @@ const flattenJSON = (data: any, parent = "") => {
 const HEX_REGEX = /^#(?:[A-Fa-f0-9]{3}){1,2}$/;
 
 export default function App() {
-  const [jsonData, setJsonData] = useState<JsonItem[]>([]);
+  const [jsonData, setJsonData] = useState<JsonItem[]>(() => {
+    // Initialize from localStorage if available
+    const saved = localStorage.getItem("picklesData");
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        return [];
+      }
+    }
+    return [];
+  });
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<JsonItem[]>([]);
@@ -30,13 +42,54 @@ export default function App() {
   const [activeSuggestion, setActiveSuggestion] = useState(-1);
   const [prediction, setPrediction] = useState("");
   const [notification, setNotification] = useState("");
+  const [fileLoaded, setFileLoaded] = useState(() => {
+    // Initialize fileLoaded based on whether we have stored data
+    return localStorage.getItem("picklesData") !== null;
+  });
+  const [fileName, setFileName] = useState<string>(() => {
+    return localStorage.getItem("picklesFileName") || "";
+  });
   const fuseRef = useRef<Fuse<JsonItem> | null>(null);
+
+  // Add effect to save to localStorage when jsonData changes
+  useEffect(() => {
+    if (jsonData.length > 0) {
+      localStorage.setItem("picklesData", JSON.stringify(jsonData));
+    } else {
+      localStorage.removeItem("picklesData");
+      localStorage.removeItem("picklesFileName");
+    }
+  }, [jsonData]);
+
+  // Add effect to save filename
+  useEffect(() => {
+    if (fileName) {
+      localStorage.setItem("picklesFileName", fileName);
+    }
+  }, [fileName]);
+
+  // Add effect to initialize Fuse when loading from storage
+  useEffect(() => {
+    if (jsonData.length > 0) {
+      fuseRef.current = new Fuse(jsonData, {
+        keys: ["path", "value"],
+        threshold: 0.3,
+        includeScore: true,
+        ignoreLocation: true,
+      });
+    }
+  }, []); // Run once on mount
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     setError("");
+    setFileLoaded(false);
     if (!e.target.files) return;
     const file = e.target.files[0];
     if (!file) return;
+
+    // Save the filename
+    setFileName(file.name);
+
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
@@ -46,6 +99,7 @@ export default function App() {
         const parsed = JSON.parse(result);
         const flattened = flattenJSON(parsed);
         setJsonData(flattened);
+        setFileLoaded(true);
         fuseRef.current = new Fuse(flattened, {
           keys: ["path", "value"],
           threshold: 0.3,
@@ -144,72 +198,108 @@ export default function App() {
     setTimeout(() => setNotification(""), 2000);
   };
 
+  // Add a function to clear the stored data
+  const clearStoredData = () => {
+    setJsonData([]);
+    setFileLoaded(false);
+    setFileName("");
+    setQuery("");
+    setResults([]);
+    setSuggestions([]);
+    setActiveSuggestion(-1);
+    setPrediction("");
+    fuseRef.current = null;
+  };
+
   return (
-    <div className="mx-auto p-4 grid grid-cols-[30rem_3fr] gap-10 relative ">
+    <main className="mx-auto p-4 grid grid-cols-[30rem_3fr] gap-10 relative ">
       {notification && (
         <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 p-10 bg-green-500 text-white  text-2xl rounded shadow-lg transition-opacity duration-1000 animate-fadeOut border-4 border-green-700">
           {notification}
         </div>
       )}
-      <div className="bg-green-50/50 p-10 rounded-lg">
+      <section className="bg-green-50/50 p-10 rounded-lg">
         <h1 className="text-2xl font-bold mb-4">🥒 pickles</h1>
         <p className="text-sm text-gray-500 mb-4">
           The perfect picker for parsing perplexing JSON properties.
         </p>
         <div className="mb-4">
-          <input
-            type="file"
-            accept=".json"
-            onChange={handleFileUpload}
-            className="w-full p-2 border rounded"
-          />
+          <div className="flex gap-2 mb-2">
+            {!fileLoaded && (
+              <input
+                id="file-upload"
+                type="file"
+                accept=".json"
+                onChange={handleFileUpload}
+                className="w-full p-2 border rounded border-gray-300"
+              />
+            )}
+          </div>
+          {fileName && (
+            <div className="text-sm text-gray-600 flex justify-between">
+              <span>Loaded file: {fileName}</span>
+              {fileLoaded && (
+                <button
+                  onClick={clearStoredData}
+                  className="ml-2 px-4 py-1 bg-red-500 text-white-50 rounded hover:bg-red-600 hover:text-white"
+                >
+                  remove
+                </button>
+              )}
+            </div>
+          )}
           {error && <div className="mt-2 text-red-500">{error}</div>}
         </div>
 
-        <div className="relative mb-4">
-          <input
-            type="text"
-            className="w-full p-2 border rounded"
-            placeholder="Search properties..."
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={handleKeyDown}
-          />
-          {suggestions.length > 0 && (
-            <ul className="absolute z-10 w-full bg-white border rounded mt-1 max-h-60 overflow-auto">
-              {suggestions.map((item, index) => (
-                <li
-                  key={item.path}
-                  data-index={index}
-                  className={`p-2 cursor-pointer flex justify-between ${
-                    activeSuggestion === index ? "bg-blue-100" : ""
-                  }`}
-                  onMouseDown={() => selectSuggestion(item)}
-                >
-                  <div className="flex justify-end">
-                    {typeof item.value === "string" &&
-                      HEX_REGEX.test(item.value) && (
-                        <span
-                          className="w-4 h-4 rounded-full inline-block mr-4"
-                          style={{ backgroundColor: item.value }}
-                        ></span>
-                      )}
-                    {typeof item.value === "string" &&
-                      item.value.length < 10 && (
-                        <span className="w-4 h-4 rounded-full inline-block">
-                          {item.value}
-                        </span>
-                      )}
-                  </div>
-                  <span className="text-sm inline-block mr-2">{item.path}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </div>
+        {fileLoaded && (
+          <div className="relative mb-4">
+            <input
+              id="search"
+              type="text"
+              className="w-full p-2 border rounded"
+              placeholder="Search properties..."
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={handleKeyDown}
+            />
+            {suggestions.length > 0 && (
+              <ul className="absolute z-10 w-full bg-white border rounded mt-1 max-h-60 overflow-auto">
+                {suggestions.map((item, index) => (
+                  <li
+                    key={item.path}
+                    data-index={index}
+                    className={`p-2 cursor-pointer flex justify-between ${
+                      activeSuggestion === index ? "bg-blue-100" : ""
+                    }`}
+                    onMouseDown={() => selectSuggestion(item)}
+                  >
+                    <div className="flex justify-end">
+                      {typeof item.value === "string" &&
+                        HEX_REGEX.test(item.value) && (
+                          <span
+                            className="w-4 h-4 rounded-full inline-block mr-4"
+                            style={{ backgroundColor: item.value }}
+                          ></span>
+                        )}
+                      {typeof item.value === "string" &&
+                        item.value.length < 10 && (
+                          <span className="w-4 h-4 rounded-full inline-block">
+                            {item.value}
+                          </span>
+                        )}
+                    </div>
+                    <span className="text-sm inline-block mr-2">
+                      {item.path}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+      </section>
 
-      <div className="text-lg">
+      <section className="text-lg">
         <h2 className="text-xl font-bold mb-4">Results</h2>
         {results.map((item) => (
           <div key={item.path} className="border-b py-2">
@@ -231,8 +321,8 @@ export default function App() {
             )}
           </div>
         ))}
-      </div>
+      </section>
       <Analytics />
-    </div>
+    </main>
   );
 }
