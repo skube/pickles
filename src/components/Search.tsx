@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { JsonItem } from '../types';
 import { HEX_REGEX } from '../utils/helpers';
 
@@ -21,9 +21,16 @@ export const Search: React.FC<SearchProps> = ({
     activeSuggestion,
     selectSuggestion,
 }) => {
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        inputRef.current?.focus();
+    }, []);
+
     return (
         <div className="relative mb-4">
             <input
+                ref={inputRef}
                 id="search"
                 type="text"
                 className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
@@ -41,7 +48,7 @@ export const Search: React.FC<SearchProps> = ({
                         <li
                             key={item.path}
                             data-index={index}
-                            className={`p-2 cursor-pointer flex justify-between hover:bg-gray-100 dark:hover:bg-gray-600 ${activeSuggestion === index ? "bg-blue-100 dark:bg-blue-900" : ""
+                            className={`p-2 cursor-pointer flex justify-between hover:bg-gray-100 dark:hover:bg-gray-600 ${activeSuggestion === index ? "bg-green-100 dark:bg-green-800" : ""
                                 }`}
                             onMouseDown={() => selectSuggestion(item)}
                         >
