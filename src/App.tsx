@@ -1,26 +1,16 @@
 import { useState, useEffect, useRef } from "react";
 import { Analytics } from "@vercel/analytics/react";
-
 import Fuse from "fuse.js";
 
-interface JsonItem {
-  path: string;
-  value: any;
-}
+import { JsonItem } from "./types";
+import { flattenJSON } from "./utils/helpers";
+import { getSortedObject, ObjectSortType, sortPrimitiveResults } from "./utils/sortUtils";
 
-const flattenJSON = (data: any, parent = "") => {
-  let result: { path: string; value: any }[] = [];
-  if (typeof data === "object" && data !== null) {
-    Object.entries(data).forEach(([key, value]) => {
-      const path = parent ? `${parent}.${key}` : key;
-      result.push({ path, value });
-      result = result.concat(flattenJSON(value, path));
-    });
-  }
-  return result;
-};
-
-const HEX_REGEX = /^#(?:[A-Fa-f0-9]{3}){1,2}$/;
+import { Notification } from "./components/Notification";
+import { Header } from "./components/Header";
+import { Search } from "./components/Search";
+import { ObjectResults } from "./components/ObjectResults";
+import { PrimitiveResults } from "./components/PrimitiveResults";
 
 export default function App() {
   const [jsonData, setJsonData] = useState<JsonItem[]>(() => {
@@ -38,6 +28,7 @@ export default function App() {
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<JsonItem[]>([]);
+  const [sortedResults, setSortedResults] = useState<JsonItem[]>([]);
   const [suggestions, setSuggestions] = useState<JsonItem[]>([]);
   const [activeSuggestion, setActiveSuggestion] = useState(-1);
   const [prediction, setPrediction] = useState("");
@@ -49,6 +40,12 @@ export default function App() {
   const [fileName, setFileName] = useState<string>(() => {
     return localStorage.getItem("picklesFileName") || "";
   });
+  const [resultsSort, setResultsSort] = useState<{ column: 'path' | 'value'; direction: 'asc' | 'desc' } | null>(null);
+  const [objectSort, setObjectSort] = useState<ObjectSortType>('insertion');
+  const [darkMode, setDarkMode] = useState<boolean>(() => {
+    return localStorage.getItem("picklesDarkMode") === "true";
+  });
+  const [copyLastPropertyOnly, setCopyLastPropertyOnly] = useState(true);
   const fuseRef = useRef<Fuse<JsonItem> | null>(null);
 
   // Add effect to save to localStorage when jsonData changes
@@ -67,6 +64,16 @@ export default function App() {
       localStorage.setItem("picklesFileName", fileName);
     }
   }, [fileName]);
+
+  // Add effect to save dark mode preference
+  useEffect(() => {
+    localStorage.setItem("picklesDarkMode", String(darkMode));
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [darkMode]);
 
   // Add effect to initialize Fuse when loading from storage
   useEffect(() => {
@@ -121,16 +128,39 @@ export default function App() {
       return;
     }
 
-    // Keep path-based suggestions flexible
-    const sugg = jsonData.filter((item) =>
-      item.path.toLowerCase().includes(query.toLowerCase())
-    );
+    // Fuzzy word-based matching for suggestions (Path OR Value)
+    // Split query into words and check if all words appear in the path or value
+    const normalizedQuery = query.toLowerCase().replace(/\./g, ' ');
+    const queryWords = normalizedQuery.split(/\s+/).filter(word => word.length > 0);
+
+    const sugg = jsonData.filter((item) => {
+      const normalizedPath = item.path.toLowerCase().replace(/\./g, ' ');
+      const normalizedValue = String(item.value).toLowerCase();
+
+      // Check if all query words are found in either path or value
+      return queryWords.every(word =>
+        normalizedPath.includes(word) || normalizedValue.includes(word)
+      );
+    });
+
+    // Default sort: shortest path first
     sugg.sort((a, b) => a.path.length - b.path.length);
+
     setSuggestions(sugg);
 
-    // If there's an active suggestion, only show that result
+    // If there's an active suggestion, only show that result (and its children if it's an object)
     if (activeSuggestion >= 0 && sugg[activeSuggestion]) {
-      setResults([sugg[activeSuggestion]]);
+      const selected = sugg[activeSuggestion];
+      let matches = [selected];
+
+      if (typeof selected.value === 'object') {
+        const children = jsonData.filter(item =>
+          item.path.startsWith(selected.path + '.')
+        );
+        matches = [...matches, ...children];
+      }
+
+      setResults(matches);
     } else {
       // First check for exact value matches
       const exactValueMatches = jsonData.filter(
@@ -141,9 +171,39 @@ export default function App() {
         // If we have exact value matches, only show those
         setResults(exactValueMatches);
       } else {
-        // Fall back to fuzzy search using Fuse.js for path searching
-        const fuseResults = fuseRef.current.search(query);
-        const matches = fuseResults.map((r) => r.item);
+        // Use fuzzy word-based search (Path OR Value)
+        // Split query into words and check if all appear in path or value
+        const normalizedQuery = query.toLowerCase().replace(/\./g, ' ');
+        const queryWords = normalizedQuery.split(/\s+/).filter(word => word.length > 0);
+
+        let matches = jsonData.filter((item) => {
+          const normalizedPath = item.path.toLowerCase().replace(/\./g, ' ');
+          const normalizedValue = String(item.value).toLowerCase();
+
+          // Check if all query words are found in either path or value
+          return queryWords.every(word =>
+            normalizedPath.includes(word) || normalizedValue.includes(word)
+          );
+        });
+
+        // If any match is an object, find and include its children
+        const objectMatches = matches.filter(m => typeof m.value === 'object');
+        if (objectMatches.length > 0) {
+          const children = jsonData.filter(item =>
+            objectMatches.some(obj =>
+              item.path.startsWith(obj.path + '.') && item.path !== obj.path
+            )
+          );
+
+          // Add children that aren't already in matches
+          const existingPaths = new Set(matches.map(m => m.path));
+          children.forEach(child => {
+            if (!existingPaths.has(child.path)) {
+              matches.push(child);
+            }
+          });
+        }
+
         setResults(matches);
       }
     }
@@ -154,6 +214,11 @@ export default function App() {
       setPrediction("");
     }
   }, [query, jsonData, activeSuggestion]);
+
+  // Sort results based on user preference
+  useEffect(() => {
+    setSortedResults(sortPrimitiveResults(results, resultsSort));
+  }, [results, resultsSort]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "ArrowDown") {
@@ -192,10 +257,28 @@ export default function App() {
   };
 
   const selectSuggestion = (suggestion: JsonItem) => {
+    let textToCopy = suggestion.path;
+
+    // If copyLastPropertyOnly is enabled, only copy the last property
+    if (copyLastPropertyOnly) {
+      const parts = suggestion.path.split('.');
+      textToCopy = parts[parts.length - 1];
+    }
+
     setQuery(suggestion.path);
-    navigator.clipboard.writeText(String(suggestion.path));
-    setNotification(`Picked! ${suggestion.path}`);
+    navigator.clipboard.writeText(textToCopy);
+    setNotification(`Picked! ${textToCopy}`);
     setTimeout(() => setNotification(""), 2000);
+  };
+
+  // Handle sort column click
+  const handleSort = (column: 'path' | 'value') => {
+    setResultsSort(prev => {
+      if (prev?.column === column) {
+        return { column, direction: prev.direction === 'asc' ? 'desc' : 'asc' };
+      }
+      return { column, direction: 'asc' };
+    });
   };
 
   // Add a function to clear the stored data
@@ -212,115 +295,67 @@ export default function App() {
   };
 
   return (
-    <main className="mx-auto p-4 grid grid-cols-[30rem_3fr] gap-10 relative ">
-      {notification && (
-        <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 p-10 bg-green-500 text-white  text-2xl rounded shadow-lg transition-opacity duration-1000 animate-fadeOut border-4 border-green-700">
-          {notification}
-        </div>
-      )}
-      <section className="bg-green-50/50 p-10 rounded-lg">
-        <h1 className="text-2xl font-bold mb-4">🥒 pickles</h1>
-        <p className="text-sm text-gray-500 mb-4">
-          The perfect picker for parsing perplexing JSON properties.
-        </p>
-        <div className="mb-4">
-          <div className="flex gap-2 mb-2">
-            {!fileLoaded && (
-              <input
-                id="file-upload"
-                type="file"
-                accept=".json"
-                onChange={handleFileUpload}
-                className="w-full p-2 border rounded border-gray-300"
-              />
-            )}
-          </div>
-          {fileName && (
-            <div className="text-sm text-gray-600 flex justify-between">
-              <span>Loaded file: {fileName}</span>
-              {fileLoaded && (
-                <button
-                  onClick={clearStoredData}
-                  className="ml-2 px-4 py-1 bg-red-500 text-white-50 rounded hover:bg-red-600 hover:text-white"
-                >
-                  remove
-                </button>
-              )}
-            </div>
-          )}
-          {error && <div className="mt-2 text-red-500">{error}</div>}
-        </div>
+    <main className="mx-auto p-4 grid grid-cols-[20rem_3fr] gap-10 relative dark:bg-gray-900 min-h-screen transition-colors">
+      <Notification message={notification} />
+
+      <section className="bg-green-50/50 dark:bg-gray-800 py-8 px-4 rounded-lg transition-colors">
+        <Header
+          fileLoaded={fileLoaded}
+          fileName={fileName}
+          error={error}
+          onFileUpload={handleFileUpload}
+          onClearData={clearStoredData}
+        />
 
         {fileLoaded && (
-          <div className="relative mb-4">
-            <input
-              id="search"
-              type="text"
-              className="w-full p-2 border rounded"
-              placeholder="Search properties..."
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={handleKeyDown}
-            />
-            {suggestions.length > 0 && (
-              <ul className="absolute z-10 w-full bg-white border rounded mt-1 max-h-60 overflow-auto">
-                {suggestions.map((item, index) => (
-                  <li
-                    key={item.path}
-                    data-index={index}
-                    className={`p-2 cursor-pointer flex justify-between ${
-                      activeSuggestion === index ? "bg-blue-100" : ""
-                    }`}
-                    onMouseDown={() => selectSuggestion(item)}
-                  >
-                    <div className="flex justify-end">
-                      {typeof item.value === "string" &&
-                        HEX_REGEX.test(item.value) && (
-                          <span
-                            className="w-4 h-4 rounded-full inline-block mr-4"
-                            style={{ backgroundColor: item.value }}
-                          ></span>
-                        )}
-                      {typeof item.value === "string" &&
-                        item.value.length < 10 && (
-                          <span className="w-4 h-4 rounded-full inline-block">
-                            {item.value}
-                          </span>
-                        )}
-                    </div>
-                    <span className="text-sm inline-block mr-2">
-                      {item.path}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+          <Search
+            query={query}
+            setQuery={setQuery}
+            setActiveSuggestion={setActiveSuggestion}
+            handleKeyDown={handleKeyDown}
+            suggestions={suggestions}
+            activeSuggestion={activeSuggestion}
+            selectSuggestion={selectSuggestion}
+          />
         )}
       </section>
 
       <section className="text-lg">
-        <h2 className="text-xl font-bold mb-4">Results</h2>
-        {results.map((item) => (
-          <div key={item.path} className="border-b py-2">
-            <div>
-              <strong>{item.path}</strong>:{` `}
-              {typeof item.value === "object" ? (
-                <pre className="whitespace-pre-wrap bg-gray-100 p-2 rounded">
-                  {JSON.stringify(item.value, null, 2)}
-                </pre>
-              ) : (
-                <span>{String(item.value)}</span>
-              )}
-            </div>
-            {typeof item.value === "string" && HEX_REGEX.test(item.value) && (
-              <div
-                className="w-10 h-10 border"
-                style={{ backgroundColor: item.value }}
-              ></div>
+        <div className="flex justify-between items-center mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded">
+          <h2 className="text-xl font-bold dark:text-white">Results</h2>
+          <button
+            onClick={() => setDarkMode(!darkMode)}
+            className="p-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+            title={darkMode ? "Switch to light mode" : "Switch to dark mode"}
+          >
+            {darkMode ? (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-yellow-500" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clipRule="evenodd" />
+              </svg>
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-700" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
+              </svg>
             )}
-          </div>
-        ))}
+          </button>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <ObjectResults
+            sortedResults={sortedResults}
+            objectSort={objectSort}
+            setObjectSort={setObjectSort}
+            getSortedObject={(obj) => getSortedObject(obj, objectSort)}
+          />
+          <PrimitiveResults
+            sortedResults={sortedResults}
+            resultsSort={resultsSort}
+            handleSort={handleSort}
+            selectSuggestion={selectSuggestion}
+            copyLastPropertyOnly={copyLastPropertyOnly}
+            setCopyLastPropertyOnly={setCopyLastPropertyOnly}
+          />
+        </div>
       </section>
       <Analytics />
     </main>

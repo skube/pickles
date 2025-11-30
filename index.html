@@ -1,13 +1,26 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>🥒 pickles</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🥒 pickles</title>
+  <script>
+    // Prevent FOUC - set theme immediately before any rendering
+    const html = document.documentElement;
+    const isDark = localStorage.getItem('picklesDarkMode') === 'true';
+
+    html.style.backgroundColor = isDark ? '#111827' : '#ffffff';
+    html.style.colorScheme = isDark ? 'dark' : 'light';
+
+    if (isDark) html.classList.add('dark');
+  </script>
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+
 </html>
