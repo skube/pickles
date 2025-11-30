@@ -7,19 +7,34 @@ interface PrimitiveResultsProps {
     resultsSort: { column: 'path' | 'value'; direction: 'asc' | 'desc' } | null;
     handleSort: (column: 'path' | 'value') => void;
     selectSuggestion: (item: JsonItem) => void;
+    copyLastPropertyOnly: boolean;
+    setCopyLastPropertyOnly: (value: boolean) => void;
 }
 
 export const PrimitiveResults: React.FC<PrimitiveResultsProps> = ({
     sortedResults,
     resultsSort,
     handleSort,
-    selectSuggestion
+    selectSuggestion,
+    copyLastPropertyOnly,
+    setCopyLastPropertyOnly
 }) => {
     const primitiveItems = sortedResults.filter((item) => typeof item.value !== "object");
 
     return (
         <div className="bg-gray-50/30 dark:bg-gray-800/50 p-3 rounded">
-            <h3 className="font-semibold mb-2 text-gray-700 dark:text-gray-300">Primitives</h3>
+            <div className="flex justify-between items-center mb-2">
+                <h3 className="font-semibold text-gray-700 dark:text-gray-300">Primitives</h3>
+                <label className="flex items-center gap-2 cursor-pointer text-xs text-gray-600 dark:text-gray-400">
+                    <input
+                        type="checkbox"
+                        checked={copyLastPropertyOnly}
+                        onChange={(e) => setCopyLastPropertyOnly(e.target.checked)}
+                        className="w-4 h-4 cursor-pointer"
+                    />
+                    <span>Copy last property only</span>
+                </label>
+            </div>
             <div className="border dark:border-gray-600 rounded overflow-hidden">
                 <div className="max-h-[600px] overflow-auto">
                     <table className="w-full text-sm text-left">
@@ -71,8 +86,19 @@ export const PrimitiveResults: React.FC<PrimitiveResultsProps> = ({
                                             </span>
                                         </div>
                                     </td>
-                                    <td className="px-4 py-2 text-right font-medium text-gray-900 dark:text-gray-200 truncate max-w-[200px] " title={item.path}>
-                                        {item.path}
+                                    <td className="px-4 py-2 text-right font-medium text-gray-900 dark:text-gray-200 truncate max-w-[200px]" title={item.path}>
+                                        {copyLastPropertyOnly && item.path.includes('.') ? (
+                                            <>
+                                                <span className="opacity-30 transition-opacity duration-150">
+                                                    {item.path.substring(0, item.path.lastIndexOf('.') + 1)}
+                                                </span>
+                                                <span className="transition-opacity duration-150">
+                                                    {item.path.substring(item.path.lastIndexOf('.') + 1)}
+                                                </span>
+                                            </>
+                                        ) : (
+                                            item.path
+                                        )}
                                     </td>
                                 </tr>
                             ))}

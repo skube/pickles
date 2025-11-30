@@ -12,7 +12,7 @@ export const Notification: React.FC<NotificationProps> = ({ message }) => {
             <div className="text-8xl mb-2">🥒</div>
             <div className="bg-green-600 text-white px-6 py-3 rounded-full shadow-2xl">
                 <div className="font-bold text-xl text-center">Picked!</div>
-                <div className=" font-mono opacity-90 mt-1 max-w-[300px] truncate">
+                <div className=" font-mono opacity-90 mt-1 max-w-[300px] truncate text-center">
                     {message.replace('Picked! ', '')}
                 </div>
             </div>

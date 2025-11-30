@@ -45,6 +45,7 @@ export default function App() {
   const [darkMode, setDarkMode] = useState<boolean>(() => {
     return localStorage.getItem("picklesDarkMode") === "true";
   });
+  const [copyLastPropertyOnly, setCopyLastPropertyOnly] = useState(true);
   const fuseRef = useRef<Fuse<JsonItem> | null>(null);
 
   // Add effect to save to localStorage when jsonData changes
@@ -256,9 +257,17 @@ export default function App() {
   };
 
   const selectSuggestion = (suggestion: JsonItem) => {
+    let textToCopy = suggestion.path;
+
+    // If copyLastPropertyOnly is enabled, only copy the last property
+    if (copyLastPropertyOnly) {
+      const parts = suggestion.path.split('.');
+      textToCopy = parts[parts.length - 1];
+    }
+
     setQuery(suggestion.path);
-    navigator.clipboard.writeText(String(suggestion.path));
-    setNotification(`Picked! ${suggestion.path}`);
+    navigator.clipboard.writeText(textToCopy);
+    setNotification(`Picked! ${textToCopy}`);
     setTimeout(() => setNotification(""), 2000);
   };
 
@@ -343,6 +352,8 @@ export default function App() {
             resultsSort={resultsSort}
             handleSort={handleSort}
             selectSuggestion={selectSuggestion}
+            copyLastPropertyOnly={copyLastPropertyOnly}
+            setCopyLastPropertyOnly={setCopyLastPropertyOnly}
           />
         </div>
       </section>
