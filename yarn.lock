@@ -2021,30 +2021,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"json-explorer@workspace:.":
-  version: 0.0.0-use.local
-  resolution: "json-explorer@workspace:."
-  dependencies:
-    "@eslint/js": "npm:^9.21.0"
-    "@tailwindcss/vite": "npm:^4.0.15"
-    "@types/react": "npm:^19.0.10"
-    "@types/react-dom": "npm:^19.0.4"
-    "@vercel/analytics": "npm:^1.5.0"
-    "@vitejs/plugin-react": "npm:^4.3.4"
-    eslint: "npm:^9.21.0"
-    eslint-plugin-react-hooks: "npm:^5.1.0"
-    eslint-plugin-react-refresh: "npm:^0.4.19"
-    fuse.js: "npm:^7.1.0"
-    globals: "npm:^15.15.0"
-    react: "npm:^19.0.0"
-    react-dom: "npm:^19.0.0"
-    tailwindcss: "npm:^4.0.15"
-    typescript: "npm:~5.7.2"
-    typescript-eslint: "npm:^8.24.1"
-    vite: "npm:^6.2.0"
-  languageName: unknown
-  linkType: soft
-
 "json-schema-traverse@npm:^0.4.1":
   version: 0.4.1
   resolution: "json-schema-traverse@npm:0.4.1"
@@ -2507,6 +2483,30 @@ __metadata:
   checksum: 10c0/2a16ed0e81fbc43513e245aa5763354e25e787dab0d539581a6c3f0f967461a159ed6236b2559de23aa5b88e7dc32b469b6c47568833dd142a4b24b4f5cd2620
   languageName: node
   linkType: hard
+
+"pickles@workspace:.":
+  version: 0.0.0-use.local
+  resolution: "pickles@workspace:."
+  dependencies:
+    "@eslint/js": "npm:^9.21.0"
+    "@tailwindcss/vite": "npm:^4.0.15"
+    "@types/react": "npm:^19.0.10"
+    "@types/react-dom": "npm:^19.0.4"
+    "@vercel/analytics": "npm:^1.5.0"
+    "@vitejs/plugin-react": "npm:^4.3.4"
+    eslint: "npm:^9.21.0"
+    eslint-plugin-react-hooks: "npm:^5.1.0"
+    eslint-plugin-react-refresh: "npm:^0.4.19"
+    fuse.js: "npm:^7.1.0"
+    globals: "npm:^15.15.0"
+    react: "npm:^19.0.0"
+    react-dom: "npm:^19.0.0"
+    tailwindcss: "npm:^4.0.15"
+    typescript: "npm:~5.7.2"
+    typescript-eslint: "npm:^8.24.1"
+    vite: "npm:^6.2.0"
+  languageName: unknown
+  linkType: soft
 
 "picocolors@npm:^1.0.0, picocolors@npm:^1.1.1":
   version: 1.1.1
