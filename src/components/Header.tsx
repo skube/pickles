@@ -23,8 +23,8 @@ export const Header: React.FC<HeaderProps> = ({
                         🥒 pickles
                         <span className="text-sm text-gray-500 dark:text-gray-600 ml-2 italic">by skube</span>
                     </h1>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                        The perfect picker for parsing perplexing properties.
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                        Potentially the perfect picker for parsing perplexing properties.
                     </p>
                 </div>
             </div>
