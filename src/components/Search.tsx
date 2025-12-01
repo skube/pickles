@@ -48,7 +48,7 @@ export const Search: React.FC<SearchProps> = ({
                         <li
                             key={item.path}
                             data-index={index}
-                            className={`p-2 cursor-pointer flex justify-between hover:bg-gray-100 dark:hover:bg-gray-600 ${activeSuggestion === index ? "bg-green-100 dark:bg-green-800" : ""
+                            className={`group p-2 cursor-pointer flex justify-between hover:bg-gray-100 dark:hover:bg-gray-600 ${activeSuggestion === index ? "bg-green-100 dark:bg-green-800" : ""
                                 }`}
                             onMouseDown={() => selectSuggestion(item)}
                         >
@@ -62,7 +62,10 @@ export const Search: React.FC<SearchProps> = ({
                                     )}
                                 {typeof item.value === "string" &&
                                     item.value.length < 20 && (
-                                        <span className="text-xs text-gray-500 inline-block mr-2 self-center">
+                                        <span className={`text-xs inline-block mr-2 self-center ${activeSuggestion === index
+                                                ? "text-gray-900 dark:text-gray-300"
+                                                : "text-gray-500 group-hover:text-gray-900 dark:group-hover:text-gray-300"
+                                            }`}>
                                             {item.value}
                                         </span>
                                     )}
