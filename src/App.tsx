@@ -148,6 +148,17 @@ export default function App() {
 
     setSuggestions(sugg);
 
+    // Auto-highlight the first suggestion if no suggestion is currently active
+    // This happens when user types but hasn't used arrow keys yet
+    if (activeSuggestion === -1 && sugg.length > 0) {
+      setActiveSuggestion(0);
+    } else if (sugg.length === 0) {
+      setActiveSuggestion(-1);
+    } else if (activeSuggestion >= sugg.length) {
+      // If the active suggestion index is out of bounds (e.g., fewer results after typing)
+      setActiveSuggestion(sugg.length - 1);
+    }
+
     // If there's an active suggestion, only show that result (and its children if it's an object)
     if (activeSuggestion >= 0 && sugg[activeSuggestion]) {
       const selected = sugg[activeSuggestion];
@@ -245,8 +256,14 @@ export default function App() {
             behavior: "smooth",
           });
       }, 0);
-    } else if (e.key === "Enter" && activeSuggestion >= 0) {
-      selectSuggestion(suggestions[activeSuggestion]);
+    } else if (e.key === "Enter") {
+      if (activeSuggestion >= 0) {
+        // If a suggestion is actively selected via keyboard, use it
+        selectSuggestion(suggestions[activeSuggestion]);
+      } else if (suggestions.length > 0) {
+        // Otherwise, default to the first suggestion
+        selectSuggestion(suggestions[0]);
+      }
     } else if (e.key === "ArrowRight" && prediction) {
       setQuery((prev) => prev + prediction);
       e.preventDefault();
